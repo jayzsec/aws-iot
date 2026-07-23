@@ -1,0 +1,20 @@
+# Environment variables
+.env
+.env.local
+
+# Cloud Credentials & Local State
+.aws/
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# Certificates and Keys
+*.pem
+*.key
+*.crt
+*.pfx
+
+# Dependencies & Build Files
+node_modules/
+__pycache__/
+dist/
