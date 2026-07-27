@@ -33,6 +33,30 @@ variable "project_name" {
   description = "Base name for resources"
 }
 
+variable "aws_region" {
+  type = string
+  default = "ap-southeast-2"
+  description = "Default region for the project"
+}
+
+variable "environment" {
+  type = string
+  default = "dev"
+  description = "Deployment environment - dev, staging, prod"
+}
+
+variable "timestream_memory_store_retention_hours" {
+  type = number
+  default = 24
+  description = "Duration in hours to keep telemetry in Timestream in-memory store"
+}
+
+variable "timestream_magnetic_store_retention_days" {
+  type = number
+  default = 365
+  description = "Duration in days to keep telemetry in Timestream magnetic disk store"
+}
+
 # random id
 resource "random_id" "suffix" {
   byte_length = 4
@@ -77,6 +101,33 @@ module "terraform_state_bucket" {
 output "s3_bucket_name" {
   value = module.terraform_state_bucket.s3_bucket_id
   description = "copy this value into backend provider"
+}
+
+output "iot_mqtt_endpoint" {
+  value = data.aws_iot_endpoint.mqtt_endpoint.endpoint_address
+  description = "The ATS MQTT host endpoint for devices to connect to"
+}
+
+output "timestream_database_name" {
+  value = aws_timestreamwrite_database.telemetry.database_name
+  description = "Name of the Timestream Database"
+}
+
+output "timestream_table_name" {
+  value = aws_timestreamwrite_table.telemetry.table_name
+  description = "Name of the Timestream Table"
+}
+
+output "device_certificate_pem" {
+  value = aws_iot_certificate.device_cert.certificate_pem
+  sensitive = true
+  description = "Public certificate PEM for the simulator device"
+}
+
+output "device_private_key" {
+  value = aws_iot_certificate.device_cert.private_key
+  sensitive = true
+  description = "Private key for the simulator device"
 }
 
 # versioning lifecycle
