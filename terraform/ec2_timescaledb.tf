@@ -114,7 +114,7 @@ resource "aws_ebs_volume" "timescaledb_data" {
   }
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
   }
 }
 
@@ -181,7 +181,7 @@ resource "aws_instance" "timescaledb" {
   vpc_security_group_ids = [aws_security_group.timescaledb_sg.id]
   iam_instance_profile = aws_iam_instance_profile.timescaledb.name
   associate_public_ip_address = true
-  disable_api_termination = true
+  disable_api_termination = false
 
   root_block_device {
     volume_size = 20

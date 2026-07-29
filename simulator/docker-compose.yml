@@ -1,0 +1,16 @@
+services:
+  sim-01:
+    build: .
+    environment:
+      AWS_IOT_ENDPOINT: "${AWS_IOT_ENDPOINT}"
+      CLIENT_ID: "iot-fleet-platform-dev-sim-01"
+    volumes:
+      - ./certs:/certs:ro
+
+  sim-02:
+    build: .
+    environment:
+      AWS_IOT_ENDPOINT: "${AWS_IOT_ENDPOINT}"
+      CLIENT_ID: "iot-fleet-platform-dev-sim-02"
+    volumes:
+      - ./certs:/certs:ro

@@ -50,6 +50,12 @@ MOUNT_POINT=/data/timescaledb
 
   mkdir -p "$MOUNT_POINT"
   mount "$DEVICE" "$MOUNT_POINT"
+  # Create subfolder AFTER mounting so it resides on the EBS volume
+  mkdir -p "$MOUNT_POINT/pgdata"
+  # Ensure postgres container user (UID 999) owns the data subfolder
+  chown -R 999:999 "$MOUNT_POINT/pgdata"
+  chmod 700 "$MOUNT_POINT/pgdata"
+
 
   # Persist mount across reboots via UUID
   UUID=$(blkid -s UUID -o value "$DEVICE")
@@ -150,7 +156,7 @@ services:
     environment:
       POSTGRES_PASSWORD: "$DB_PASSWORD"
     volumes:
-      - $MOUNT_POINT:/var/lib/postgresql/data
+      - $MOUNT_POINT/pgdata:/var/lib/postgresql/data
       - /data/initdb:/docker-entrypoint-initdb.d
     networks:
       - internal_net
