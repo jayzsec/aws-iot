@@ -20,34 +20,46 @@ echo '/swapfile none swap sw 0 0' >> /etc/fstab
 ##########################################
 MOUNT_POINT=/data/timescaledb
 
-# Wait up to 60 seconds for the EBS volume attachment to complete
-DEVICE=""
-for i in $(seq 1 30); do
-  for dev in /dev/nvme1n1 /dev/sdf /dev/xvdf; do
-    if [ -b "$dev" ]; then
-      DEVICE="$dev"
-      break 2
-    fi
+# Run EBS setup in a subshell so that any failure here logs a warning but does
+# NOT abort the rest of user_data (Docker, group setup, compose, etc. still run).
+# cloud-init-output.log will show the exact error for diagnosis.
+(
+  set -euxo pipefail
+
+  # Wait up to 60 seconds for the EBS volume attachment to complete
+  DEVICE=""
+  for i in $(seq 1 30); do
+    for dev in /dev/nvme1n1 /dev/sdf /dev/xvdf; do
+      if [ -b "$dev" ]; then
+        DEVICE="$dev"
+        break 2
+      fi
+    done
+    sleep 2
   done
-  sleep 2
-done
 
-if [ -z "$DEVICE" ]; then
-  echo "ERROR: Secondary EBS block device not found within 60 seconds!" >&2
-  exit 1
-fi
+  if [ -z "$DEVICE" ]; then
+    echo "WARNING: Secondary EBS block device not found within 60 seconds — skipping EBS mount." >&2
+    exit 1
+  fi
 
-# Format with EXT4 if unformatted
-if ! blkid "$DEVICE"; then
-  mkfs.ext4 "$DEVICE"
-fi
+  # Format with EXT4 if unformatted
+  if ! blkid "$DEVICE"; then
+    mkfs.ext4 "$DEVICE"
+  fi
 
+  mkdir -p "$MOUNT_POINT"
+  mount "$DEVICE" "$MOUNT_POINT"
+
+  # Persist mount across reboots via UUID
+  UUID=$(blkid -s UUID -o value "$DEVICE")
+  echo "UUID=$UUID $MOUNT_POINT ext4 defaults,nofail 0 2" >> /etc/fstab
+
+  echo "EBS volume mounted successfully at $MOUNT_POINT"
+) || echo "WARNING: EBS setup failed — continuing without data volume. Check /var/log/cloud-init-output.log."
+
+# Ensure mount point exists even if EBS setup failed (Docker volume mapping needs it)
 mkdir -p "$MOUNT_POINT"
-mount "$DEVICE" "$MOUNT_POINT"
-
-# Persist mount across reboots via UUID
-UUID=$(blkid -s UUID -o value "$DEVICE")
-echo "UUID=$UUID $MOUNT_POINT ext4 defaults,nofail 0 2" >> /etc/fstab
 
 ###################################################
 ## Package Dependencies Installation
