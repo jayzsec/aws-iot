@@ -1,0 +1,185 @@
+#!/bin/bash
+set -euxo pipefail
+
+###################################################
+## Swap file allocation for RAM overhead protection
+###################################################
+# pre-allocate 1g empty file named swapfile
+fallocate -l 1G /swapfile
+# only root user can read or write to this file
+chmod 600 /swapfile
+# format as swap structure
+mkswap /swapfile
+# activate swap - turns the swap space on
+swapon /swapfile
+# make it permanent - appends a configuration line to file system table
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
+##########################################
+## EBS Persistent Volume Format & Mount ##
+##########################################
+# target device
+DEVICE=/dev/sdf
+# mount point
+MOUNT_POINT=/data/timescaledb
+
+for i in $(seq 1 30); do
+  # check if device exists && break out of loop
+  [ -e "$DEVICE" ] && break
+  # wait for 2 seconds
+  sleep 2
+done
+
+# check if the device has filesystem
+if ! blkid "$DEVICE"; then
+  # format the drive in ext4 if it has no filesystem
+  mkfs.ext4 "$DEVICE"
+fi
+
+# create the mount directory
+mkdir -p "$MOUNT_POINT"
+# mount the storage drive - any files written will now be written to the attached disk
+mount "$DEVICE" "$MOUNT_POINT"
+
+# asks blkid for the uuid of /dev/sdf and save it to a variable UUID
+UUID=$(blkid -s UUID -o value "$DEVICE")
+# appends an automated mount directive to /etc/fstab
+echo "UUID=$UUID $MOUNT_POINT ext4 defaults,nofail 0 2" >> /etc/fstab
+
+###################################################
+## Package Dependencies Installation
+###################################################
+
+apt-get update -y
+apt-get install -y docker.io docker-compose-v2 awscli wget
+systemctl enable docker
+systemctl start docker
+
+# a polling loop that repeatedly checks if Docker has finished launching
+until systemctl is-active --quiet docker; do sleep 1; done
+
+#####################################################
+## Fetch Password at Runtime from SSM Parameter Store
+#####################################################
+
+DB_PASSWORD=$(aws ssm get-parameter \
+    --name "${ssm_param_name}" \
+    --with-decryption \
+    --region "${aws_region}" \
+    --query "Parameter.Value" \
+    --output text)
+
+########################################################
+## Database Initialization Scripts - Non-Superuser setup
+# Files placed in /docker-entrypoint-initdb.d execute automatically on the very first container startup
+########################################################
+
+mkdir -p /data/initdb
+cat > /data/initdb/01-app-role.sql <<SQL
+CREATE USER app_user WITH PASSWORD '$DB_PASSWORD';
+CREATE DATABASE iot_telemetry OWNER app_user;
+\c iot_telemetry
+CREATE EXTENSION IF NOT EXISTS timescaledb;
+GRANT ALL PRIVILEGES ON DATABASE iot_telemetry TO app_user;
+SQL
+
+#############################################################
+## Docker Compose Deployment - Timescaledb + PgBouncer Pooler
+#############################################################
+
+mkdir -p /opt/app
+cat > /opt/app/docker-compose.yml <<DOCKERCOMPOSE
+services:
+  timescaledb:
+    image: timescale/timescaledb:2.29.0-pg17
+    container_name: timescaledb
+    restart: unless-stopped
+    mem_limit: 700m
+    environment:
+      POSTGRES_PASSWORD: "$DB_PASSWORD"
+    volumes:
+      - $MOUNT_POINT:/var/lib/postgresql/data
+      - /data/initdb:/docker-entrypoint-initdb.d
+    networks:
+      - internal_net
+
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.25.2-p0
+    container_name: pgbouncer
+    restart: unless-stopped
+    ports:
+      - "6432:6432"
+    environment:
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_USER: app_user
+      DB_PASSWORD: "$DB_PASSWORD"
+      DB_NAME: iot_telemetry
+      LISTEN_PORT: 6432
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 500
+      DEFAULT_POOL_SIZE: 20
+      AUTH_TYPE: plain
+    depends_on:
+      - timescaledb
+    networks:
+      - internal_net
+
+networks:
+  internal_net:
+    driver: bridge
+DOCKERCOMPOSE
+
+cd /opt/app && docker compose up -d
+
+######################################
+## Nightly Logical Backup Script to S3
+######################################
+
+## create backup script
+# qoutes around the delimiter tell the shell not to evaluate the variables right now
+cat > /usr/local/bin/backup-timescaledb.sh <<'BACKUP'
+#!/bin/bash
+set -euo pipefail
+
+# timestamp generation
+TIMESTAMP=$(date +%Y-%m-%d-%H%M%S)
+
+## run database dump
+# docker exec timescaledb - execute command inside the timescaledb container
+# custom binary format -Fc, compressed, fast and allows pg_restore
+# outputs the dump to temporary file /tmp
+
+docker exec timescaledb pg_dump -U postgres -Fc iot_telemetry > "/tmp/backup-$TIMESTAMP.dump"
+# upload the local dump file to s3 bucket
+aws s3 cp "/tmp/backup-$TIMESTAMP.dump" "s3://${backup_bucket}/timescaledb-backups/backup-$TIMESTAMP.dump"
+# delete the temp file
+rm "/tmp/backup-$TIMESTAMP.dump"
+BACKUP
+# make it executable
+chmod +x /usr/local/bin/backup-timescaledb.sh
+
+## writes a cron configuration file directly into /etc/cron.d
+# Minute 0, Hour 2 (2am) * * * everyday, month, and day of the week
+# runs as root system user
+echo "0 2 * * * root /usr/local/bin/backup-timescaledb.sh >> /var/log/timescaledb-backup.log 2>&1" > /etc/cron.d/timescaledb-backup
+
+######################################################
+## CloudWatch Agent Setup for RAM & DISK Usage Metrics
+######################################################
+wget -q https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb -O /tmp/cwagent.deb
+dpkg -i /tmp/cwagent.deb || true
+
+cat > /opt/aws/amazon-cloudwatch-agent/etc/config.json <<'CWCONFIG'
+{
+  "metrics": {
+    "metrics_collected": {
+      "mem": { "measurement": ["mem_used_percent"] },
+      "disk": { "measurement": ["used_percent"], "resources": ["/", "/data/timescaledb"] }
+    }
+  }
+}
+CWCONFIG
+
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/config.json || true
