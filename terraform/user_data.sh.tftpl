@@ -65,22 +65,32 @@ mkdir -p "$MOUNT_POINT"
 ## Package Dependencies Installation
 ###################################################
 
+# Note: 'awscli' was removed from Ubuntu 24.04 (Noble) apt repositories.
+# Docker Compose v2 is installed as a CLI plugin via the docker.io package.
 apt-get update -y
-apt-get install -y docker.io docker-compose-v2 awscli wget
+apt-get install -y docker.io docker-compose-v2 wget unzip curl
 systemctl enable docker
 systemctl start docker
 
+# Wait for Docker daemon to be fully active before proceeding
+until systemctl is-active --quiet docker; do sleep 1; done
+
 # Add both the default Ubuntu user and the SSM session user to the docker group
 # so that 'docker' commands work without sudo when connecting via SSM Session Manager.
-# Group membership takes effect for any new process/session started after this point.
 usermod -aG docker ubuntu
-# ssm-user is created on first SSM connection - pre-create it so the usermod succeeds
+# ssm-user is created lazily on first SSM connection — pre-create it so usermod succeeds
 id ssm-user &>/dev/null || useradd -m -s /bin/bash ssm-user
 usermod -aG docker ssm-user
 
-
-# a polling loop that repeatedly checks if Docker has finished launching
-until systemctl is-active --quiet docker; do sleep 1; done
+###################################################
+## AWS CLI v2 — Official binary installer
+## (awscli apt package removed in Ubuntu 24.04)
+###################################################
+curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+unzip -q /tmp/awscliv2.zip -d /tmp/awscliv2
+/tmp/awscliv2/aws/install
+rm -rf /tmp/awscliv2.zip /tmp/awscliv2
+aws --version
 
 #####################################################
 ## Fetch Password at Runtime from SSM Parameter Store
