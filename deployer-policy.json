@@ -13,6 +13,8 @@
         "iot:*",
         "ec2:*",
         "logs:*",
+        "ssm:*",
+        "dlm:*",
         "iam:CreateRole",
         "iam:DeleteRole",
         "iam:GetRole",
@@ -24,7 +26,14 @@
         "iam:ListAttachedRolePolicies",
         "iam:ListRolePolicies",
         "iam:PassRole",
-        "iam:TagRole"
+        "iam:TagRole",
+        "iam:CreateInstanceProfile",
+        "iam:DeleteInstanceProfile",
+        "iam:GetInstanceProfile",
+        "iam:AddRoleToInstanceProfile",
+        "iam:RemoveRoleFromInstanceProfile",
+        "iam:TagInstanceProfile",
+        "iam:ListInstanceProfiles"
       ],
       "Resource": "*"
     }
