@@ -4,7 +4,7 @@ A full-stack, enterprise-grade IoT platform built on AWS infrastructure. This re
 
 ---
 
-## 📐 Cloud Architecture
+## Cloud Architecture
 
 ![AWS Cloud Architecture Diagram](./docs/aws-iot-v2.svg "AWS Architecture Overview")
 
@@ -12,7 +12,7 @@ A full-stack, enterprise-grade IoT platform built on AWS infrastructure. This re
 
 ---
 
-## 🎯 What It Does
+## What It Does
 
 This platform provides a complete **bi-directional IoT fleet management system**:
 
@@ -25,7 +25,7 @@ This platform provides a complete **bi-directional IoT fleet management system**
 
 ---
 
-## 🧩 Key Components & Functions
+## Key Components & Functions
 
 ### 1. Edge Devices & Simulator (`simulator/`)
 - **Python mTLS Simulator** (`device_sim.py`): Multi-device simulation (`sim-01`, `sim-02`) using the `awsiotsdk` Python client over X.509 mTLS.
@@ -54,7 +54,7 @@ This platform provides a complete **bi-directional IoT fleet management system**
 
 ---
 
-## 🎨 UI & UX (`frontend/`)
+## UI & UX (`frontend/`)
 
 Built with **Astro.js** and **React**, the frontend web dashboard provides a sleek, modern dark-mode monitoring interface:
 
@@ -68,7 +68,7 @@ Built with **Astro.js** and **React**, the frontend web dashboard provides a sle
 
 ---
 
-## 📋 Prerequisites
+## Prerequisites
 
 - **AWS CLI v2**: Logged in via `aws configure` or `aws login`.
 - **Terraform** (`>= 1.15.6`): Infrastructure provisioner.
@@ -77,14 +77,3 @@ Built with **Astro.js** and **React**, the frontend web dashboard provides a sle
 - **aws-session-manager-plugin**: For secure SSM Session Manager access to the EC2 database instance (`aws ssm start-session`).
 
 ---
-
-## 🚀 Recommended Future Enhancements
-
-Here are key features and security improvements recommended for future iterations:
-
-- [ ] **AWS IoT Device Shadows**: Integrate Device Shadows for persistent device state management and offline command queuing.
-- [ ] **Over-The-Air (OTA) Updates**: Implement AWS IoT Jobs for orchestrating remote firmware/software updates across device fleets.
-- [ ] **Automated Anomaly Detection**: Add AWS IoT Events or Kinesis Data Analytics to detect out-of-spec readings and trigger SNS/PagerDuty alerts.
-- [ ] **CI/CD Security Pipeline**: Integrate **Checkov** (IaC security static analysis) and **Trivy** (vulnerability scanning) into GitHub Actions.
-- [ ] **Grafana Dashboard**: Connect an EC2 or Managed Grafana instance directly to PgBouncer for deep operational analytics.
-- [ ] **Multi-Region Replication**: Add cross-region S3 replication for database backups and multi-AZ database clustering for HA.
