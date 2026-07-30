@@ -1,0 +1,8 @@
+---
+import Layout from '../layouts/Layout.astro';
+import DashboardApp from '../components/DashboardApp.jsx';
+---
+
+<Layout title="Dashboard">
+	<DashboardApp client:only="react" />
+</Layout>
