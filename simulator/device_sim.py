@@ -12,7 +12,41 @@ CLIENT_ID = os.getenv("CLIENT_ID", "iot-fleet-dev-sim-01")
 PATH_TO_CERT = os.getenv("CERT_PATH", "../certs/certificate.pem")
 PATH_TO_KEY = os.getenv("KEY_PATH", "../certs/private.key")
 PATH_TO_ROOT_CA = os.getenv("ROOT_CA_PATH", "../certs/root-CA.crt")
-TOPIC = f"telemetry/{CLIENT_ID}/data"
+
+TELEMETRY_TOPIC = f"telemetry/{CLIENT_ID}/data"
+CONTROL_TOPIC = f"telemetry/{CLIENT_ID}/control"
+
+# Global state for dynamic telemetry interval (default: 10 seconds)
+PUBLISH_INTERVAL = 10.0
+
+# Callback when a control message is received over MQTT
+def on_message_received(topic, payload, dup, qos, retain, **kwargs):
+    global PUBLISH_INTERVAL
+    try:
+        data = json.loads(payload.decode('utf-8'))
+        print(f"[{CLIENT_ID}] 📥 RECEIVED CONTROL COMMAND on '{topic}': {json.dumps(data, indent=2)}", flush=True)
+
+        command = data.get("command")
+        cmd_payload = data.get("payload", {})
+
+        if command == "SET_INTERVAL":
+            new_interval = cmd_payload.get("interval_seconds")
+            if new_interval and isinstance(new_interval, (int, float)) and new_interval > 0:
+                PUBLISH_INTERVAL = float(new_interval)
+                print(f"[{CLIENT_ID}] ⏱️ Dynamically updated telemetry interval to {PUBLISH_INTERVAL}s!")
+            else:
+                print(f"[{CLIENT_ID}] ⚠️ Invalid 'interval_seconds' value: {new_interval}")
+
+        elif command == "RESTART":
+            print(f"[{CLIENT_ID}] 🔄 Simulating device restart sequence...")
+            time.sleep(2)
+            print(f"[{CLIENT_ID}] ✅ Device back online!")
+
+        else:
+            print(f"[{CLIENT_ID}] ℹ️ Received unhandled command: {command}")
+
+    except Exception as e:
+        print(f"[{CLIENT_ID}] Error handling control payload: {e}")
 
 def main():
     print(f"[{CLIENT_ID}] Initializing MQTT mTLS Connection to {ENDPOINT}...")
@@ -36,37 +70,36 @@ def main():
     connect_future.result()
     print(f"[{CLIENT_ID}] Connected to AWS IoT Core successfully!")
 
+    # Subscribe to control topic
+    print(f"[{CLIENT_ID}] Subscribing to control topic: {CONTROL_TOPIC}...")
+    subscribe_future, _ = mqtt_connection.subscribe(
+        topic=CONTROL_TOPIC,
+        qos=mqtt.QoS.AT_LEAST_ONCE,
+        callback=on_message_received
+    )
+    subscribe_future.result()
+    print(f"[{CLIENT_ID}] ✅ Subscribed to {CONTROL_TOPIC}")
+
     # Telemetry loop
-    battery_level = 100.0
     try:
         while True:
-            # Simulate realistic environmental variations
-            temperature = round(random.uniform(20.0, 32.0), 2)
-            humidity = round(random.uniform(40.0, 75.0), 2)
-            battery_level = max(0.0, round(battery_level - 0.1, 2))
-
             payload = {
-                "clientId": CLIENT_ID,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
-                "temperature": temperature,
-                "humidity": humidity,
-                "battery": battery_level,
-                "status": "OK" if battery_level > 15 else "LOW_BATTERY"
+                "temperature": round(random.uniform(20.0, 30.0), 2),
+                "humidity": round(random.uniform(40.0, 70.0), 2),
+                "battery": round(random.uniform(80.0, 100.0), 2),
+                "status": "OK"
             }
 
-            message_json = json.dumps(payload)
-            print(f"[{CLIENT_ID}] Publishing to {TOPIC}: {message_json}")
-
             mqtt_connection.publish(
-                topic=TOPIC,
-                payload=message_json,
+                topic=TELEMETRY_TOPIC,
+                payload=json.dumps(payload),
                 qos=mqtt.QoS.AT_LEAST_ONCE
             )
-
-            time.sleep(5)  # Publish every 5 seconds
-
+            print(f"[{CLIENT_ID}] 📤 Published telemetry (Next message in {PUBLISH_INTERVAL}s)")
+            time.sleep(PUBLISH_INTERVAL)
     except KeyboardInterrupt:
-        print(f"[{CLIENT_ID}] Stopping simulator...")
+        print(f"[{CLIENT_ID}] Disconnecting...")
         disconnect_future = mqtt_connection.disconnect()
         disconnect_future.result()
 

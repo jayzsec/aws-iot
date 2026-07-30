@@ -6,6 +6,7 @@ services:
       CLIENT_ID: "iot-fleet-platform-dev-sim-01"
     volumes:
       - ./certs:/certs:ro
+      - ./device_sim.py:/app/device_sim.py:ro
 
   sim-02:
     build: .
@@ -14,3 +15,4 @@ services:
       CLIENT_ID: "iot-fleet-platform-dev-sim-02"
     volumes:
       - ./certs:/certs:ro
+      - ./device_sim.py:/app/device_sim.py:ro
