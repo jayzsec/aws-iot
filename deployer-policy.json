@@ -7,6 +7,7 @@
       "Action": [
         "s3:*",
         "cloudfront:*",
+        "acm:*",
         "lambda:*",
         "apigateway:*",
         "cognito-idp:*",

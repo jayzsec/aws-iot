@@ -93,6 +93,7 @@ To enable automated deployments via GitHub Actions or OIDC execution roles, atta
 | :--- | :--- | :--- |
 | **S3** | `s3:*` | Manage Terraform state, backup buckets, & static frontend assets |
 | **CloudFront** | `cloudfront:*` | Provision CDN distributions, OAC, & edge cache invalidations |
+| **ACM** | `acm:*` | Request & validate SSL/TLS certificates for custom domain hosting |
 | **Lambda** | `lambda:*` | Manage Ingestor, Query, and Control Lambda functions |
 | **API Gateway** | `apigateway:*` | Provision HTTP API v2 routes, integrations, and authorizers |
 | **Cognito IDP** | `cognito-idp:*` | Manage User Pools, App Clients, and authentication settings |
