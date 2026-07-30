@@ -84,15 +84,4 @@ Built with **Astro.js** and **React**, the frontend web dashboard provides a sle
 - **Docker / Podman**: For running the local Python device simulator.
 - **aws-session-manager-plugin**: For secure SSM Session Manager access to the EC2 database instance (`aws ssm start-session`).
 
----
 
-## Recommended Future Enhancements
-
-Here are key features and security improvements recommended for future iterations:
-
-- **AWS IoT Device Shadows**: Integrate Device Shadows for persistent device state management and offline command queuing.
-- **Over-The-Air (OTA) Updates**: Implement AWS IoT Jobs for orchestrating remote firmware/software updates across device fleets.
-- **Automated Anomaly Detection**: Add AWS IoT Events or Kinesis Data Analytics to detect out-of-spec readings and trigger SNS/PagerDuty alerts.
-- **CI/CD Security Pipeline**: Integrate **Checkov** (IaC security static analysis) and **Trivy** (vulnerability scanning) into GitHub Actions.
-- **Grafana Dashboard**: Connect an EC2 or Managed Grafana instance directly to PgBouncer for deep operational analytics.
-- **Multi-Region Replication**: Add cross-region S3 replication for database backups and multi-AZ database clustering for HA.
