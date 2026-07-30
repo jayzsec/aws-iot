@@ -1,45 +1,45 @@
 output "s3_bucket_name" {
-  value = module.terraform_state_bucket.s3_bucket_id
+  value       = module.terraform_state_bucket.s3_bucket_id
   description = "copy this value into backend provider"
 }
 
 # AWS IOT CORE ENDPOINT & CERTIFICATES
 output "iot_mqtt_endpoint" {
-  value = data.aws_iot_endpoint.mqtt_endpoint.endpoint_address
+  value       = data.aws_iot_endpoint.mqtt_endpoint.endpoint_address
   description = "The ATS MQTT host endpoint for virtual devices to connect"
 }
 
 output "device_certificate_pem" {
-  value = aws_iot_certificate.device_cert.certificate_pem
-  sensitive = true
+  value       = aws_iot_certificate.device_cert.certificate_pem
+  sensitive   = true
   description = "Public certificate PEM for device mTLS authentication"
 }
 
 output "device_private_key" {
-  value = aws_iot_certificate.device_cert.private_key
-  sensitive = true
+  value       = aws_iot_certificate.device_cert.private_key
+  sensitive   = true
   description = "Private key for device mTLS authentication"
 }
 
 # Timescaledb and EC2 database endpoints
 output "timescaledb_instance_id" {
-  value = aws_instance.timescaledb.id
+  value       = aws_instance.timescaledb.id
   description = "Connect using: aws ssm start-session --target <instance_id>"
 }
 
 output "timescaledb_private_ip" {
-  value = aws_instance.timescaledb.private_ip
+  value       = aws_instance.timescaledb.private_ip
   description = "Private IP endpoint accessed by Lambda"
 }
 
 # Backup & Ingestion resources
 output "backup_s3_bucket" {
-  value = module.backup_bucket.s3_bucket_id
+  value       = module.backup_bucket.s3_bucket_id
   description = "S3 bucket storing logical dumps"
 }
 
 output "lambda_ingestor_function_name" {
-  value = aws_lambda_function.iot_ingestor.function_name
+  value       = aws_lambda_function.iot_ingestor.function_name
   description = "Name of the Lambda function handling MQTT ingestion into PgBouncer"
 }
 
@@ -50,12 +50,12 @@ output "lambda_ingestor_function_name" {
 
 # For Frontend integration
 output "cognito_user_pool_id" {
-  value = aws_cognito_user_pool.user_pool.id
+  value       = aws_cognito_user_pool.user_pool.id
   description = "ID of the Cognito User Pool"
 }
 
 output "cognito_app_client_id" {
-  value = aws_cognito_user_pool_client.user_pool_client.id
+  value       = aws_cognito_user_pool_client.user_pool_client.id
   description = "ID of the Cognito App Client"
 }
 
@@ -63,7 +63,7 @@ output "cognito_app_client_id" {
 ## API Gateway endpoint output
 #####################################
 output "api_gateway_url" {
-  value = aws_apigatewayv2_api.http_api.api_endpoint
+  value       = aws_apigatewayv2_api.http_api.api_endpoint
   description = "Base URL for the HTTP API Gateway"
 }
 
@@ -72,16 +72,16 @@ output "api_gateway_url" {
 #####################################
 
 output "s3_bucket_name_frontend" {
-  value = aws_s3_bucket.frontend_bucket.id
+  value       = aws_s3_bucket.frontend_bucket.id
   description = "Name of the private s3 bucket hosting frontend assets"
 }
 
 output "cloudfront_domain_name" {
-  value = aws_cloudfront_distribution.frontend_cdn.domain_name
+  value       = aws_cloudfront_distribution.frontend_cdn.domain_name
   description = "Public HTTPS URL of hte CloudFront CDN Distribution"
 }
 
 output "cloudfront_distribution_id" {
-  value = aws_cloudfront_distribution.frontend_cdn.id
+  value       = aws_cloudfront_distribution.frontend_cdn.id
   description = "CloudFront Distribution ID for invalidation commands"
 }

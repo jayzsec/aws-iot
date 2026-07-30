@@ -6,7 +6,7 @@ A full-stack, enterprise-grade IoT platform built on AWS infrastructure. This re
 
 ## Cloud Architecture
 
-![AWS Cloud Architecture Diagram](./docs/aws-iot-v2.svg "AWS Architecture Overview")
+![AWS Cloud Architecture Diagram](./docs/aws-iot-v3.svg "AWS Architecture Overview")
 
 > *Figure 1: End-to-end architecture showcasing device mTLS telemetry ingestion, self-hosted TimescaleDB on EC2, Serverless API Gateway & Lambda query/control layers, Cognito authentication, CloudFront CDN static hosting, and Astro.js frontend dashboard.*
 

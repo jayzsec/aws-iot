@@ -3,13 +3,13 @@
 #####################################################
 
 module "backup_bucket" {
-  source = "terraform-aws-modules/s3-bucket/aws"
+  source  = "terraform-aws-modules/s3-bucket/aws"
   version = "5.15.1"
 
-  bucket = "${var.project_name}-${var.environment}-db-backups"
+  bucket                   = "${var.project_name}-${var.environment}-db-backups"
   control_object_ownership = true
-  object_ownership = "BucketOwnerEnforced"
-  force_destroy = false
+  object_ownership         = "BucketOwnerEnforced"
+  force_destroy            = false
 
   versioning = {
     enabled = true
@@ -22,8 +22,8 @@ module "backup_bucket" {
     }
   }
 
-  block_public_acls = true
-  block_public_policy = true
-  ignore_public_acls = true
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
   restrict_public_buckets = true
 }

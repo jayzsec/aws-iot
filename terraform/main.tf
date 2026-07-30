@@ -44,7 +44,7 @@ module "terraform_state_bucket" {
 
   # Best practice
   control_object_ownership = true
-  object_ownership = "BucketOwnerEnforced"
+  object_ownership         = "BucketOwnerEnforced"
 
   # safeguards
   # prevents accidental destroy
@@ -65,9 +65,9 @@ module "terraform_state_bucket" {
   }
 
   # block public access - security
-  block_public_acls = true
-  block_public_policy = true
-  ignore_public_acls = true
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
   restrict_public_buckets = true
 }
 

@@ -34,17 +34,17 @@ resource "aws_iot_topic_rule" "telemetry_ingestion" {
 
 # Grant IoT Core service permission to invoke the Lambda function
 resource "aws_lambda_permission" "allow_iot_to_lambda" {
-  statement_id = "AllowExecutionFromIoTCore"
+  statement_id  = "AllowExecutionFromIoTCore"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.iot_ingestor.function_name
   principal     = "iot.amazonaws.com"
-  source_arn = aws_iot_topic_rule.telemetry_ingestion.arn
+  source_arn    = aws_iot_topic_rule.telemetry_ingestion.arn
 }
 
 # IoT POLICY - Least-privilege rules that is dynamic to the client's ThingName
 # added multi-sim support
 resource "aws_iot_policy" "device_policy" {
-  name   = "${var.project_name}-${var.environment}-device-policy"
+  name = "${var.project_name}-${var.environment}-device-policy"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -56,19 +56,19 @@ resource "aws_iot_policy" "device_policy" {
         Resource = ["arn:aws:iot:${var.aws_region}:*:client/${var.project_name}-${var.environment}-sim-*"]
       },
       {
-        Effect = "Allow"
-        Action = ["iot:Publish"]
+        Effect   = "Allow"
+        Action   = ["iot:Publish"]
         Resource = ["arn:aws:iot:${var.aws_region}:*:topic/telemetry/${var.project_name}-${var.environment}-sim-*/data"]
       },
       {
-        Effect   = "Allow"
-        Action   = ["iot:Subscribe"]
+        Effect = "Allow"
+        Action = ["iot:Subscribe"]
         # iot:Subscribe MUST use 'topicfilter/'
         Resource = ["arn:aws:iot:${var.aws_region}:*:topicfilter/telemetry/${var.project_name}-${var.environment}-sim-*/control"]
       },
       {
-        Effect   = "Allow"
-        Action   = ["iot:Receive"]
+        Effect = "Allow"
+        Action = ["iot:Receive"]
         # iot:Receive MUST use 'topic/'
         Resource = ["arn:aws:iot:${var.aws_region}:*:topic/telemetry/${var.project_name}-${var.environment}-sim-*/control"]
       }
@@ -113,8 +113,8 @@ resource "aws_iot_thing_principal_attachment" "thing_cert_attach_01" {
 
   # prevent error race conditions
   depends_on = [
-  aws_iot_thing.simulator_device_01,
-  aws_iot_certificate.device_cert
+    aws_iot_thing.simulator_device_01,
+    aws_iot_certificate.device_cert
   ]
 }
 
