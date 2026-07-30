@@ -42,3 +42,27 @@ output "lambda_ingestor_function_name" {
   value = aws_lambda_function.iot_ingestor.function_name
   description = "Name of the Lambda function handling MQTT ingestion into PgBouncer"
 }
+
+
+#####################################
+## Cognito outputs
+#####################################
+
+# For Frontend integration
+output "cognito_user_pool_id" {
+  value = aws_cognito_user_pool.user_pool.id
+  description = "ID of the Cognito User Pool"
+}
+
+output "cognito_app_client_id" {
+  value = aws_cognito_user_pool_client.user_pool_client.id
+  description = "ID of the Cognito App Client"
+}
+
+#####################################
+## API Gateway endpoint output
+#####################################
+output "api_gateway_url" {
+  value = aws_apigatewayv2_api.http_api.api_endpoint
+  description = "Base URL for the HTTP API Gateway"
+}
