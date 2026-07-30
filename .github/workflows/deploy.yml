@@ -155,7 +155,7 @@ jobs:
         run: |
           cd terraform
           terraform init
-          echo "S3_BUCKET=$(terraform output -raw s3_bucket_name)" >> $GITHUB_ENV
+          echo "S3_BUCKET=$(terraform output -raw s3_bucket_name_frontend)" >> $GITHUB_ENV
           echo "CF_DIST_ID=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_ENV
           echo "API_URL=$(terraform output -raw api_gateway_url)" >> $GITHUB_ENV
           echo "COGNITO_POOL=$(terraform output -raw cognito_user_pool_id)" >> $GITHUB_ENV
