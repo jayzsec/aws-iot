@@ -20,14 +20,14 @@ variable "environment" {
 #####################################################
 # Timestream vars
 #####################################################
-variable "timestream_memory_store_retention_hours" {
-  type        = number
-  default     = 24
-  description = "Duration in hours to keep telemetry in Timestream in-memory store"
+variable "domain_name" {
+  type        = string
+  default     = "cabang.dev"
+  description = "Domain hosted in cloudflare"
 }
 
-variable "timestream_magnetic_store_retention_days" {
-  type        = number
-  default     = 365
-  description = "Duration in days to keep telemetry in Timestream magnetic disk store"
+variable "subdomain" {
+  type        = string
+  default     = "iot.cabang.dev"
+  description = "Custom subdomain for IoT Fleet Platform"
 }

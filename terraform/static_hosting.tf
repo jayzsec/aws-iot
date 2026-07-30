@@ -101,8 +101,14 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
     }
   }
 
+  # add custom domain alias
+  aliases = [var.subdomain]
+
   viewer_certificate {
-    cloudfront_default_certificate = true
+    acm_certificate_arn      = aws_acm_certificate_validation.cert_validation.certificate_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2025"
+    # cloudfront_default_certificate = true
   }
 
   tags = {
