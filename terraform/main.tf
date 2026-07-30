@@ -14,6 +14,10 @@ terraform {
       source  = "hashicorp/archive"
       version = "2.7.1"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5"
+    }
   }
 
   backend "s3" {
@@ -28,6 +32,16 @@ terraform {
 provider "aws" {
   # Sydney
   region = "ap-southeast-2"
+}
+
+# Secondary Region specifically for CloudFront ACM Certificates
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+}
+
+provider "cloudflare" {
+  # CLOUDFLARE_API_TOKEN will be read from environment variables
 }
 
 # random id
