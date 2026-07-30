@@ -1,6 +1,6 @@
 # AWS IoT Fleet Monitoring & Control Platform
 
-A full-stack, enterprise-grade IoT platform built on AWS infrastructure. This repository provides end-to-end telemetry ingestion, self-hosted time-series storage, serverless REST query and control APIs, secure Cognito user authentication, and a modern Astro.js web dashboard.
+A full-stack, enterprise-grade IoT platform built on AWS infrastructure. This repository provides end-to-end telemetry ingestion, self-hosted time-series storage, serverless REST query and control APIs, secure Cognito user authentication, global CloudFront CDN static hosting, and a modern Astro.js web dashboard.
 
 ---
 
@@ -8,7 +8,7 @@ A full-stack, enterprise-grade IoT platform built on AWS infrastructure. This re
 
 ![AWS Cloud Architecture Diagram](./docs/aws-iot-v2.svg "AWS Architecture Overview")
 
-> *Figure 1: End-to-end architecture showcasing device mTLS telemetry ingestion, self-hosted TimescaleDB on EC2, Serverless API Gateway & Lambda query/control layers, Cognito authentication, and Astro.js frontend dashboard.*
+> *Figure 1: End-to-end architecture showcasing device mTLS telemetry ingestion, self-hosted TimescaleDB on EC2, Serverless API Gateway & Lambda query/control layers, Cognito authentication, CloudFront CDN static hosting, and Astro.js frontend dashboard.*
 
 ---
 
@@ -22,6 +22,7 @@ This platform provides a complete **bi-directional IoT fleet management system**
 4. **User Authentication**: AWS Cognito User Pools & JWT Authorizers enforce secure identity management for web clients.
 5. **Bi-Directional Downstream Control**: Web dashboard users can dispatch real-time commands (`SET_INTERVAL`, `RESTART`) via API Gateway → Control Lambda → AWS IoT Data Plane back to specific edge devices over mTLS MQTT.
 6. **Web Monitoring Dashboard**: An Astro.js single-page web app renders live telemetry charts and interactive device control panels.
+7. **Global Static Hosting & CDN**: CloudFront CDN distribution backed by an S3 origin with Origin Access Control (OAC) delivers the frontend globally over HTTPS with zero public S3 bucket access.
 
 ---
 
@@ -52,6 +53,13 @@ This platform provides a complete **bi-directional IoT fleet management system**
 - **Cognito User Pool**: User directory enforcing strong password policies and email authentication.
 - **Cognito App Client**: Configured for SPA frontends (`ALLOW_USER_SRP_AUTH`, `ALLOW_USER_PASSWORD_AUTH`, `ALLOW_REFRESH_TOKEN_AUTH`).
 
+### 5. Static Hosting & CDN (`terraform/static_hosting.tf`)
+- **Private S3 Frontend Bucket**: `aws_s3_bucket.frontend_bucket` storing Astro static site build artifacts (`frontend/dist`) with 100% public access blocked.
+- **Origin Access Control (OAC)**: `aws_cloudfront_origin_access_control` enabling SigV4 signed requests from CloudFront to S3.
+- **CloudFront CDN Distribution**: `aws_cloudfront_distribution` delivering low-latency static assets over HTTPS with SPA custom error page redirects (`403`/`404` -> `/index.html`).
+- **CloudFront Function**: `aws_cloudfront_function.astro_router` rewriting subfolder URIs (e.g. `/login` -> `/login/index.html`) for Astro SSG routing.
+- **Restricted S3 Bucket Policy**: `aws_s3_bucket_policy` granting `s3:GetObject` permissions strictly to the CloudFront distribution ARN.
+
 ---
 
 ## UI & UX (`frontend/`)
@@ -77,3 +85,14 @@ Built with **Astro.js** and **React**, the frontend web dashboard provides a sle
 - **aws-session-manager-plugin**: For secure SSM Session Manager access to the EC2 database instance (`aws ssm start-session`).
 
 ---
+
+## Recommended Future Enhancements
+
+Here are key features and security improvements recommended for future iterations:
+
+- **AWS IoT Device Shadows**: Integrate Device Shadows for persistent device state management and offline command queuing.
+- **Over-The-Air (OTA) Updates**: Implement AWS IoT Jobs for orchestrating remote firmware/software updates across device fleets.
+- **Automated Anomaly Detection**: Add AWS IoT Events or Kinesis Data Analytics to detect out-of-spec readings and trigger SNS/PagerDuty alerts.
+- **CI/CD Security Pipeline**: Integrate **Checkov** (IaC security static analysis) and **Trivy** (vulnerability scanning) into GitHub Actions.
+- **Grafana Dashboard**: Connect an EC2 or Managed Grafana instance directly to PgBouncer for deep operational analytics.
+- **Multi-Region Replication**: Add cross-region S3 replication for database backups and multi-AZ database clustering for HA.

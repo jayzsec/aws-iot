@@ -66,3 +66,22 @@ output "api_gateway_url" {
   value = aws_apigatewayv2_api.http_api.api_endpoint
   description = "Base URL for the HTTP API Gateway"
 }
+
+#####################################
+# s3 CloudFront output
+#####################################
+
+output "s3_bucket_name_frontend" {
+  value = aws_s3_bucket.frontend_bucket.id
+  description = "Name of the private s3 bucket hosting frontend assets"
+}
+
+output "cloudfront_domain_name" {
+  value = aws_cloudfront_distribution.frontend_cdn.domain_name
+  description = "Public HTTPS URL of hte CloudFront CDN Distribution"
+}
+
+output "cloudfront_distribution_id" {
+  value = aws_cloudfront_distribution.frontend_cdn.id
+  description = "CloudFront Distribution ID for invalidation commands"
+}
