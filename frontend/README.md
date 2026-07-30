@@ -4,16 +4,16 @@ An **Astro.js** and **React** single-page web dashboard for real-time telemetry 
 
 ---
 
-## 🌟 Key Features
+## Key Features
 
-- **🔐 AWS Cognito Authentication**: Secure sign-in workflow using AWS Cognito User Pools. Manages JWT `id_token` and `access_token` session storage and injects Authorization headers into API calls.
-- **📊 Real-Time Telemetry Visualization**: Time-series line and area charts visualizing environmental metrics (**Temperature**, **Humidity**, **Battery level**) with dynamic interval aggregation (`1h`, `24h`, `7d`).
-- **⚡ Bi-Directional Device Control Panel**: Interactive control interface to dispatch real-time commands (`SET_INTERVAL`, `RESTART`) down to edge devices via AWS API Gateway and IoT Core over mTLS MQTT.
-- **📱 Responsive Dark-Mode UI**: Built with modern CSS utility tokens, glassmorphism UI cards, and toast notification alerts.
+- **AWS Cognito Authentication**: Secure sign-in workflow using AWS Cognito User Pools. Manages JWT `id_token` and `access_token` session storage and injects Authorization headers into API calls.
+- **Real-Time Telemetry Visualization**: Time-series line and area charts visualizing environmental metrics (**Temperature**, **Humidity**, **Battery level**) with dynamic interval aggregation (`1h`, `24h`, `7d`).
+- **Bi-Directional Device Control Panel**: Interactive control interface to dispatch real-time commands (`SET_INTERVAL`, `RESTART`) down to edge devices via AWS API Gateway and IoT Core over mTLS MQTT.
+- **Responsive Dark-Mode UI**: Built with modern CSS utility tokens, glassmorphism UI cards, and toast notification alerts.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```text
 frontend/
@@ -42,7 +42,7 @@ frontend/
 
 ---
 
-## ⚙️ Environment Configuration
+##  Environment Configuration
 
 Create a `.env` file inside the `frontend/` directory with your deployed infrastructure outputs:
 
@@ -62,7 +62,7 @@ PUBLIC_AWS_REGION=ap-southeast-2
 
 ---
 
-## 🚀 Commands
+## Commands
 
 All commands are run from the `frontend/` directory:
 
@@ -75,7 +75,7 @@ All commands are run from the `frontend/` directory:
 
 ---
 
-## 🔐 API & Security Integration
+## API & Security Integration
 
 - **`GET /telemetry?device_id={id}&range={1h|24h|7d}`**: Fetches aggregated time-series data from TimescaleDB via Query Lambda. Requires `Authorization: Bearer <id_token>`.
 - **`POST /devices/{id}/control`**: Dispatches downstream commands (`SET_INTERVAL`, `RESTART`) to Control Lambda → AWS IoT Data Plane. Requires `Authorization: Bearer <id_token>`.
