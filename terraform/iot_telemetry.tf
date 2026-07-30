@@ -6,50 +6,88 @@ data "aws_iot_endpoint" "mqtt_endpoint" {
   endpoint_type = "iot:Data-ATS"
 }
 
-# IoT TOPIC RULE - Routes incoming MQTT payloads to Timestream
+# IoT Topic Rule: Route incoming MQTT payloads to Lambda
 resource "aws_iot_topic_rule" "telemetry_ingestion" {
+  name        = replace("${var.project_name}_${var.environment}_ingest_rule", "-", "_")
+  description = "Ingests MQTT telemetry messages and invokes Lambda to store in TimescaleDB"
   enabled     = true
-  name        = replace("${var.project_name}_${var.environment}_ingest_rule","-","_")
-  description = "Ingests MQTT telemetry message from devices into Timestream"
-  sql         = "SELECT *,clientid() as device_id FROM 'telemetry/+/data'"
+  sql         = "SELECT *, clientid() as device_id FROM 'telemetry/+/data'"
   sql_version = "2016-03-23"
 
-  # Timestream
+  lambda {
+    function_arn = aws_lambda_function.iot_ingestor.arn
+  }
 
+  # Error Action: Fallback logging to CloudWatch if Lambda invocation fails
+  error_action {
+    cloudwatch_logs {
+      log_group_name = "/aws/iot/rules/${var.project_name}_${var.environment}_errors"
+      role_arn       = aws_iam_role.iot_cw_role.arn
+    }
+  }
   tags = {
     Environment = var.environment
-    ManagedBy = "Terraform"
+    ManagedBy   = "Terraform"
   }
 }
 
+
+# Grant IoT Core service permission to invoke the Lambda function
+resource "aws_lambda_permission" "allow_iot_to_lambda" {
+  statement_id = "AllowExecutionFromIoTCore"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.iot_ingestor.function_name
+  principal     = "iot.amazonaws.com"
+  source_arn = aws_iot_topic_rule.telemetry_ingestion.arn
+}
+
 # IoT POLICY - Least-privilege rules that is dynamic to the client's ThingName
+# added multi-sim support
 resource "aws_iot_policy" "device_policy" {
   name   = "${var.project_name}-${var.environment}-device-policy"
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
         Effect = "Allow"
         Action = ["iot:Connect"]
-        Resource = ["arn:aws:iot:${var.aws_region}:*:client/$${iot:Connection.Thing.ThingName}"]
+        # Allows any simulator prefixed with your project name (e.g. sim-01, sim-02)
+        Resource = ["arn:aws:iot:${var.aws_region}:*:client/${var.project_name}-${var.environment}-sim-*"]
       },
       {
         Effect = "Allow"
         Action = ["iot:Publish"]
-        Resource = ["arn:aws:iot:${var.aws_region}:*:topic/telemetry/$${iot:Connection.Thing.ThingName}/data"]
+        Resource = ["arn:aws:iot:${var.aws_region}:*:topic/telemetry/${var.project_name}-${var.environment}-sim-*/data"]
       },
       {
-        Effect = "Allow"
-        Action = ["iot:Subscribe", "iot:Receive"]
-        Resource = ["arn:aws:iot:${var.aws_region}:*:topicfilter/telemetry/$${iot:Connection.Thing.ThingName}/control"]
+        Effect   = "Allow"
+        Action   = ["iot:Subscribe"]
+        # iot:Subscribe MUST use 'topicfilter/'
+        Resource = ["arn:aws:iot:${var.aws_region}:*:topicfilter/telemetry/${var.project_name}-${var.environment}-sim-*/control"]
       },
+      {
+        Effect   = "Allow"
+        Action   = ["iot:Receive"]
+        # iot:Receive MUST use 'topic/'
+        Resource = ["arn:aws:iot:${var.aws_region}:*:topic/telemetry/${var.project_name}-${var.environment}-sim-*/control"]
+      }
     ]
   })
 }
 
 # IoT Thing - The logical device representation in AWS registry
-resource "aws_iot_thing" "simulator_device" {
+resource "aws_iot_thing" "simulator_device_01" {
   name = "${var.project_name}-${var.environment}-sim-01"
+
+  attributes = {
+    device_type = "python_simulator"
+    environment = var.environment
+  }
+}
+
+resource "aws_iot_thing" "simulator_device_02" {
+  name = "${var.project_name}-${var.environment}-sim-02"
 
   attributes = {
     device_type = "python_simulator"
@@ -68,98 +106,44 @@ resource "aws_iot_policy_attachment" "cert_policy_attach" {
   target = aws_iot_certificate.device_cert.arn
 }
 
-# Attach Certificate -> Thing
-resource "aws_iot_thing_principal_attachment" "thing_cert_attach" {
+# Attach Certificate -> ThingS
+resource "aws_iot_thing_principal_attachment" "thing_cert_attach_01" {
   principal = aws_iot_certificate.device_cert.arn
-  thing     = aws_iot_thing.simulator_device.name
+  thing     = aws_iot_thing.simulator_device_01.name
+
+  # prevent error race conditions
+  depends_on = [
+  aws_iot_thing.simulator_device_01,
+  aws_iot_certificate.device_cert
+  ]
 }
 
-#####################################################
-# AMAZON TIMESTREAM (TIME-SERIES DATABASE)
-#####################################################
+resource "aws_iot_thing_principal_attachment" "thing_cert_attach_02" {
+  principal = aws_iot_certificate.device_cert.arn
+  thing     = aws_iot_thing.simulator_device_02.name
 
-resource "aws_timestreamwrite_database" "telemetry" {
-  database_name = "${var.project_name}-${var.environment}-db"
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-db"
-    Environment = var.environment
-    ManagedBy = "Terraform"
-  }
+  # prevent error race conditions
+  depends_on = [
+    aws_iot_thing.simulator_device_02,
+    aws_iot_certificate.device_cert
+  ]
 }
 
-resource "aws_timestreamwrite_table" "telemetry" {
-  database_name = aws_timestreamwrite_database.telemetry.database_name
-  table_name = "sensory_telemetry"
+# IAM Role for IoT CloudWatch Error Logging
+resource "aws_iam_role" "iot_cw_role" {
+  name = "${var.project_name}-${var.environment}-iot-cw-role"
 
-  retention_properties {
-    memory_store_retention_period_in_hours = var.timestream_memory_store_retention_hours
-    magnetic_store_retention_period_in_days = var.timestream_magnetic_store_retention_days
-  }
-
-  # Enables ingestion of late-arriving records into magnetic storage
-  magnetic_store_write_properties {
-    enable_magnetic_store_writes = true
-  }
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-table"
-    Environment = var.environment
-    ManagedBy = "Terraform"
-  }
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "iot.amazonaws.com" }
+    }]
+  })
 }
 
-#####################################################
-# IAM ROLES & POLICIES FOR IOT CORE -> T.S. INGESTION
-#####################################################
-
-# Trust Policy - Allows AWS IoT Core service to assume this execution role
-data "aws_iam_policy_document" "iot_assume_role" {
-  statement {
-    effect = "Allow"
-    actions = ["sts:AssumeRole"]
-
-    principals {
-      identifiers = ["iot.amazonaws.com"]
-      type = "Service"
-    }
-  }
+resource "aws_iam_role_policy_attachment" "iot_cw_attach" {
+  role       = aws_iam_role.iot_cw_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSIoTLogging"
 }
-
-# Permission Policy - Grants write access strictly to our Timestream table
-data "aws_iam_policy_document" "iot_timestream_write" {
-  statement {
-    effect = "Allow"
-    actions = ["timestream:WriteRecords"]
-    resources = [aws_timestreamwrite_table.telemetry.arn]
-  }
-
-  # Timestream SDK requires describeEndpoints permission across the regional endpoint
-  statement {
-    effect = "Allow"
-    actions = ["timestream:DescribeEndpoints"]
-    resources = ["*"]
-  }
-}
-
-resource "aws_iam_role" "iot_timestream_role" {
-  name = "${var.project_name}-${var.environment}-iot-timestream-role"
-  assume_role_policy = data.aws_iam_policy_document.iot_assume_role.json
-
-  tags = {
-    Environment = var.environment
-    ManagedBy = "Terraform"
-  }
-}
-
-resource "aws_iam_policy" "iot_timestream_policy" {
-  name = "${var.project_name}-${var.environment}-iot-timestream-policy"
-  description = "Allows AWS IoT Core Topic Rules to write records into Timestream"
-  policy = data.aws_iam_policy_document.iot_timestream_write.json
-}
-
-resource "aws_iam_role_policy_attachment" "iot_timestream_attach" {
-  policy_arn = aws_iam_policy.iot_timestream_policy.arn
-  role       = aws_iam_role.iot_timestream_role.name
-}
-
