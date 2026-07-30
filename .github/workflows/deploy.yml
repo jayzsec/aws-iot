@@ -112,7 +112,7 @@ jobs:
         run: terraform init
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve
+        run: terraform apply -auto-approve -no-color > /dev/null
 
   # =======================================================
   # JOB 4: FRONTEND DEPLOYMENT TO S3 & CLOUDFRONT
