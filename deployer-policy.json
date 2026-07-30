@@ -1,0 +1,32 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TerraformAndFrontendServices",
+      "Effect": "Allow",
+      "Action": [
+        "s3:*",
+        "cloudfront:*",
+        "lambda:*",
+        "apigateway:*",
+        "cognito-idp:*",
+        "iot:*",
+        "ec2:*",
+        "logs:*",
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:GetRolePolicy",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListRolePolicies",
+        "iam:PassRole",
+        "iam:TagRole"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

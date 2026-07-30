@@ -7,29 +7,29 @@ resource "aws_cognito_user_pool" "user_pool" {
   name = "${var.project_name}-${var.environment}-user-pool"
 
   # user sign-in attributes
-  username_attributes = ["email"]
+  username_attributes      = ["email"]
   auto_verified_attributes = ["email"]
 
   # password strength policy
   password_policy {
-    minimum_length = 8
+    minimum_length    = 8
     require_lowercase = true
     require_uppercase = true
-    require_numbers = true
-    require_symbols = false
+    require_numbers   = true
+    require_symbols   = false
   }
 
   # attribute schema
   schema {
     attribute_data_type = "String"
     name                = "email"
-    required = true
-    mutable = true
+    required            = true
+    mutable             = true
   }
 
   tags = {
     Environment = var.environment
-    ManagedBy = "Terraform"
+    ManagedBy   = "Terraform"
   }
 }
 

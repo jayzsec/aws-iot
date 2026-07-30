@@ -4,28 +4,28 @@
 
 # Random Suffix for Globally Unique S3 Bucket Name
 resource "random_string" "bucket_suffix" {
-  length = 6
+  length  = 6
   special = false
-  upper = false
+  upper   = false
 }
 
 # Private s3 Bucket
 resource "aws_s3_bucket" "frontend_bucket" {
-  bucket = "${var.project_name}-${var.environment}-frontend-${random_string.bucket_suffix.result}"
+  bucket        = "${var.project_name}-${var.environment}-frontend-${random_string.bucket_suffix.result}"
   force_destroy = true # Allows easy tear-down during development
 
   tags = {
     Environment = var.environment
-    ManagedBy = "Terraform"
+    ManagedBy   = "Terraform"
   }
 }
 
 # Block all public access to s3
 resource "aws_s3_bucket_public_access_block" "frontend_bucket_public_block" {
-  bucket = aws_s3_bucket.frontend_bucket.id
-  block_public_acls = true
-  block_public_policy = true
-  ignore_public_acls = true
+  bucket                  = aws_s3_bucket.frontend_bucket.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
   restrict_public_buckets = true
 }
 
@@ -36,7 +36,7 @@ resource "aws_s3_bucket_public_access_block" "frontend_bucket_public_block" {
 # CloudFront Origin Access Control
 resource "aws_cloudfront_origin_access_control" "frontend_oac" {
   name                              = "${var.project_name}-${var.environment}-oac"
-  description = "OAC for Astro Frontend S3 Bucket"
+  description                       = "OAC for Astro Frontend S3 Bucket"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
@@ -44,21 +44,21 @@ resource "aws_cloudfront_origin_access_control" "frontend_oac" {
 
 # CloudFront Distribution
 resource "aws_cloudfront_distribution" "frontend_cdn" {
-  enabled = true
-  is_ipv6_enabled = true
-  comment = "${var.project_name} Frontend Distribution"
+  enabled             = true
+  is_ipv6_enabled     = true
+  comment             = "${var.project_name} Frontend Distribution"
   default_root_object = "index.html"
 
   origin {
-    domain_name = aws_s3_bucket.frontend_bucket.bucket_regional_domain_name
-    origin_id   = "S3-${aws_s3_bucket.frontend_bucket.id}"
+    domain_name              = aws_s3_bucket.frontend_bucket.bucket_regional_domain_name
+    origin_id                = "S3-${aws_s3_bucket.frontend_bucket.id}"
     origin_access_control_id = aws_cloudfront_origin_access_control.frontend_oac.id
   }
 
   default_cache_behavior {
-    allowed_methods = ["GET", "HEAD", "OPTIONS"]
-    cached_methods = ["GET", "HEAD"]
-    target_origin_id       = "S3-${aws_s3_bucket.frontend_bucket.id}"
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "S3-${aws_s3_bucket.frontend_bucket.id}"
 
     forwarded_values {
       query_string = false
@@ -68,10 +68,10 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
     }
 
     viewer_protocol_policy = "redirect-to-https"
-    min_ttl = 0
-    default_ttl = 3600
-    max_ttl = 86400
-    compress = true
+    min_ttl                = 0
+    default_ttl            = 3600
+    max_ttl                = 86400
+    compress               = true
 
     # Attach the cloudfront function here
     function_association {
@@ -82,16 +82,16 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
 
   # SPA Routing Support: Redirect 403 / 404 to index.html
   custom_error_response {
-    error_code = 403
-    response_code = 200
-    response_page_path = "/index.html"
+    error_code            = 403
+    response_code         = 200
+    response_page_path    = "/index.html"
     error_caching_min_ttl = 10
   }
 
   custom_error_response {
-    error_code = 404
-    response_code = 200
-    response_page_path = "/index.html"
+    error_code            = 404
+    response_code         = 200
+    response_page_path    = "/index.html"
     error_caching_min_ttl = 10
   }
 
@@ -107,7 +107,7 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
 
   tags = {
     Environment = var.environment
-    ManagedBy = "Terraform"
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -122,12 +122,12 @@ resource "aws_s3_bucket_policy" "frontend_bucket_policy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Sid = "AllowCloudFrontServicePrincipalReadOnly"
+      Sid    = "AllowCloudFrontServicePrincipalReadOnly"
       Effect = "Allow"
       Principal = {
         Service = "cloudfront.amazonaws.com"
       }
-      Action = "s3:GetObject"
+      Action   = "s3:GetObject"
       Resource = "${aws_s3_bucket.frontend_bucket.arn}/*"
       Condition = {
         StringEquals = {
@@ -143,8 +143,8 @@ resource "aws_s3_bucket_policy" "frontend_bucket_policy" {
 #####################################################
 
 # URL Rewrite Function for Astro SSG Routes - /login -> /login/index.html
-resource "aws_cloudfront_function" "astro_router"{
-  name = "${var.project_name}-${var.environment}-astro-router"
+resource "aws_cloudfront_function" "astro_router" {
+  name    = "${var.project_name}-${var.environment}-astro-router"
   runtime = "cloudfront-js-2.0"
   comment = "Appends index.html to subfolder requests for Astro static site routing"
   publish = true
