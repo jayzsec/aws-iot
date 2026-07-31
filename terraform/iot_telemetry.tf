@@ -43,6 +43,7 @@ resource "aws_lambda_permission" "allow_iot_to_lambda" {
 
 # IoT POLICY - Least-privilege rules that is dynamic to the client's ThingName
 # added multi-sim support
+# added Device Shadow ($aws/things) topics
 resource "aws_iot_policy" "device_policy" {
   name = "${var.project_name}-${var.environment}-device-policy"
 
@@ -56,21 +57,30 @@ resource "aws_iot_policy" "device_policy" {
         Resource = ["arn:aws:iot:${var.aws_region}:*:client/${var.project_name}-${var.environment}-sim-*"]
       },
       {
-        Effect   = "Allow"
-        Action   = ["iot:Publish"]
-        Resource = ["arn:aws:iot:${var.aws_region}:*:topic/telemetry/${var.project_name}-${var.environment}-sim-*/data"]
+        Effect = "Allow"
+        Action = ["iot:Publish"]
+        Resource = [
+          "arn:aws:iot:${var.aws_region}:*:topic/telemetry/${var.project_name}-${var.environment}-sim-*/data",
+          "arn:aws:iot:${var.aws_region}:*:topic/$aws/things/${var.project_name}-${var.environment}-sim-*/shadow/*"
+        ]
       },
       {
         Effect = "Allow"
         Action = ["iot:Subscribe"]
         # iot:Subscribe MUST use 'topicfilter/'
-        Resource = ["arn:aws:iot:${var.aws_region}:*:topicfilter/telemetry/${var.project_name}-${var.environment}-sim-*/control"]
+        Resource = [
+          "arn:aws:iot:${var.aws_region}:*:topicfilter/telemetry/${var.project_name}-${var.environment}-sim-*/control",
+          "arn:aws:iot:${var.aws_region}:*:topicfilter/$aws/things/${var.project_name}-${var.environment}-sim-*/shadow/*",
+        ]
       },
       {
         Effect = "Allow"
         Action = ["iot:Receive"]
         # iot:Receive MUST use 'topic/'
-        Resource = ["arn:aws:iot:${var.aws_region}:*:topic/telemetry/${var.project_name}-${var.environment}-sim-*/control"]
+        Resource = [
+          "arn:aws:iot:${var.aws_region}:*:topic/telemetry/${var.project_name}-${var.environment}-sim-*/control",
+          "arn:aws:iot:${var.aws_region}:*:topic/$aws/things/${var.project_name}-${var.environment}-sim-*/shadow/*",
+        ]
       }
     ]
   })

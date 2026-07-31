@@ -4,7 +4,7 @@ import json
 import random
 from datetime import datetime, timezone
 from awscrt import io, mqtt
-from awsiot import mqtt_connection_builder
+from awsiot import mqtt_connection_builder, iotshadow
 
 # Environment / Configuration Parameters
 ENDPOINT = os.getenv("AWS_IOT_ENDPOINT")
@@ -18,13 +18,16 @@ CONTROL_TOPIC = f"telemetry/{CLIENT_ID}/control"
 
 # Global state for dynamic telemetry interval (default: 10 seconds)
 PUBLISH_INTERVAL = 10.0
+shadow_client = None
 
 # Callback when a control message is received over MQTT
 def on_message_received(topic, payload, dup, qos, retain, **kwargs):
     global PUBLISH_INTERVAL
     try:
         data = json.loads(payload.decode('utf-8'))
-        print(f"[{CLIENT_ID}] 📥 RECEIVED CONTROL COMMAND on '{topic}': {json.dumps(data, indent=2)}", flush=True)
+        print(f"[{CLIENT_ID}] 📥 RECEIVED CONTROL COMMAND on '{topic}': {json.dumps(data, indent=2)}",
+              flush=True
+        )
 
         command = data.get("command")
         cmd_payload = data.get("payload", {})
@@ -48,7 +51,42 @@ def on_message_received(topic, payload, dup, qos, retain, **kwargs):
     except Exception as e:
         print(f"[{CLIENT_ID}] Error handling control payload: {e}")
 
+def on_shadow_delta_updated(delta_event):
+    global PUBLISH_INTERVAL, shadow_client
+    print(
+        f"[{CLIENT_ID}] ⚡ SHADOW DELTA RECEIVED: {delta_event.state}",
+        flush=True
+    )
+
+    desired_state = delta_event.state
+    updated_reported = {}
+
+    # Check if shadow requested a new interval
+    if "interval_seconds" in desired_state:
+        new_interval = desired_state["interval_seconds"]
+        if isinstance(new_interval,(int, float)) and new_interval > 0:
+            PUBLISH_INTERVAL = float(new_interval)
+            updated_reported["interval_seconds"] = PUBLISH_INTERVAL
+            print(
+                f"[{CLIENT_ID}] ⏱️ Shadow synced telemetry interval to {PUBLISH_INTERVAL}s!"
+            )
+
+    # Sync reported state back to AWS IoT Shadow
+    if updated_reported and shadow_client:
+        update_request = iotshadow.UpdateShadowRequest(
+            thing_name=CLIENT_ID,
+            state=iotshadow.ShadowState(reported=updated_reported),
+        )
+        shadow_client.publish_update_shadow(
+            update_request, mqtt.QoS.AT_LEAST_ONCE
+        )
+        print(
+            f"[{CLIENT_ID}] ✅ REPORTED SHADOW STATE SYNCED: {updated_reported}"
+        )
+
 def main():
+    global shadow_client
+
     print(f"[{CLIENT_ID}] Initializing MQTT mTLS Connection to {ENDPOINT}...")
 
     event_loop_group = io.EventLoopGroup(1)
@@ -79,6 +117,30 @@ def main():
     )
     subscribe_future.result()
     print(f"[{CLIENT_ID}] ✅ Subscribed to {CONTROL_TOPIC}")
+
+    # Setup Shadow Client & Subscribe to Shadow Delta
+    shadow_client = iotshadow.IotShadowClient(mqtt_connection)
+    delta_sub_request = iotshadow.ShadowDeltaUpdatedSubscriptionRequest(
+        thing_name=CLIENT_ID
+    )
+    sub_future, _ = shadow_client.subscribe_to_shadow_delta_updated_events(
+        delta_sub_request, mqtt.QoS.AT_LEAST_ONCE, on_shadow_delta_updated
+    )
+    sub_future.result()
+    print(
+        f"[{CLIENT_ID}] ✅ Subscribed to Shadow Delta events for {CLIENT_ID}"
+    )
+
+    # Publish initial shadow state on startup
+    init_shadow_request = iotshadow.UpdateShadowRequest(
+        thing_name=CLIENT_ID,
+        state=iotshadow.ShadowState(
+            reported={"interval_seconds": PUBLISH_INTERVAL, "status": "OK"}
+        ),
+    )
+    shadow_client.publish_update_shadow(
+        init_shadow_request, mqtt.QoS.AT_LEAST_ONCE
+    )
 
     # Telemetry loop
     try:
