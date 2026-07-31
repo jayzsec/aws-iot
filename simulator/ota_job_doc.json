@@ -1,0 +1,5 @@
+{
+  "action": "FIRMWARE_UPDATE",
+  "version": "2.0.0",
+  "download_url": "https://s3.ap-southeast-2.amazonaws.com/firmware/v2.0.0.bin"
+}

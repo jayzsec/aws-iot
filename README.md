@@ -34,6 +34,7 @@ This platform provides a complete **bi-directional IoT fleet management system**
 ### 1. Edge Devices & Simulator (`simulator/`)
 - **Python mTLS Simulator** (`device_sim.py`): Multi-device simulation (`sim-01`, `sim-02`) using the `awsiotsdk` Python client over X.509 mTLS.
 - **AWS IoT Device Shadow Synchronization (`awsiot.iotshadow`)**: Listens for cloud-directed `desired` state updates over `$aws/things/{CLIENT_ID}/shadow/update/delta` (`ShadowDeltaUpdatedSubscriptionRequest`) to dynamically adjust publishing intervals and sync actual `reported` state back to AWS IoT Core (`UpdateShadowRequest`).
+- **AWS IoT Jobs OTA Simulation (`awsiot.iotjobs`)**: Handles real-time push notifications (`notify-next`) and queued job pulls (`start-next/accepted`). Executes remote OTA jobs (e.g. firmware update `ota_job_doc.json`), updates execution status (`IN_PROGRESS` -> `SUCCEEDED`), and reports completion back to AWS IoT Core.
 - **Dynamic Subscriber**: Listens on `telemetry/{CLIENT_ID}/control` for downstream commands and dynamically updates publishing intervals or simulates reboot cycles.
 - **Containerized Deployment**: Docker Compose stack (`docker-compose.yml`) with live code volume mounts.
 
