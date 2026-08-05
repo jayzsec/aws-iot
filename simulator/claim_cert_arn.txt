@@ -1,0 +1,1 @@
+arn:aws:iot:ap-southeast-2:107001694319:cert/e6b5d51d5f62d86b175dbbefd52dd2d7e1abf581b210de5f493295fada9f0011

@@ -161,3 +161,62 @@ resource "aws_iam_role_policy_attachment" "iot_cw_attach" {
   role       = aws_iam_role.iot_cw_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSIoTLogging"
 }
+
+# IAM Role allowing IoT Core to register Things and attach policies during Fleet Provisioning
+resource "aws_iam_role" "fleet_provisioning_role" {
+  name = "${var.project_name}-${var.environment}-provisioning-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "iot.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "provisioning_attach" {
+  role       = aws_iam_role.fleet_provisioning_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSIoTThingsRegistration"
+}
+
+# AWS IoT Provisioning Template
+resource "aws_iot_provisioning_template" "fleet_template" {
+  name                  = "${var.project_name}-${var.environment}-fleet-templ"
+  description           = "Automated provisioning template for new fleet devices"
+  provisioning_role_arn = aws_iam_role.fleet_provisioning_role.arn
+  enabled               = true
+
+  template_body = jsonencode({
+    Parameters = {
+      "AWS::IoT::Certificate::Id" = { Type = "String" }
+      "SerialNumber"              = { Type = "String" }
+    }
+    Resources = {
+      thing = {
+        Type = "AWS::IoT::Thing"
+        Properties = {
+          ThingName = { "Fn::Join" = ["-", ["${var.project_name}-${var.environment}", { "Ref" = "SerialNumber" }]] }
+          AttributePayload = {
+            device_type = "provisioned_device"
+            environment = var.environment
+          }
+        }
+      }
+      certificate = {
+        Type = "AWS::IoT::Certificate"
+        Properties = {
+          CertificateId = { "Ref" = "AWS::IoT::Certificate::Id" }
+          Status        = "ACTIVE"
+        }
+      }
+      policy = {
+        Type = "AWS::IoT::Policy"
+        Properties = {
+          PolicyName = aws_iot_policy.device_policy.name
+        }
+      }
+    }
+  })
+}
