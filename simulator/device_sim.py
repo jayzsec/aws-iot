@@ -4,7 +4,7 @@ import json
 import random
 from datetime import datetime, timezone
 from awscrt import io, mqtt
-from awsiot import mqtt_connection_builder, iotshadow
+from awsiot import mqtt_connection_builder, iotshadow, iotjobs
 
 # Environment / Configuration Parameters
 ENDPOINT = os.getenv("AWS_IOT_ENDPOINT")
@@ -19,7 +19,86 @@ CONTROL_TOPIC = f"telemetry/{CLIENT_ID}/control"
 # Global state for dynamic telemetry interval (default: 10 seconds)
 PUBLISH_INTERVAL = 10.0
 shadow_client = None
+jobs_client = None
 
+##############################
+# Jobs Handler
+##############################
+#
+def process_job_execution(execution):
+    """Processes a job execution (shared logic for push & pull)."""
+    job_id = execution.job_id
+    job_document = execution.job_document
+    print(f"[{CLIENT_ID}] 🚀 PROCESSING OTA JOB: {job_id}", flush=True)
+    print(f"[{CLIENT_ID}] 📄 Job Payload: {json.dumps(job_document)}", flush=True)
+
+    # 1. Update Job Status -> IN_PROGRESS
+    update_progress_req = iotjobs.UpdateJobExecutionRequest(
+        thing_name=CLIENT_ID,
+        job_id=job_id,
+        status=iotjobs.JobStatus.IN_PROGRESS,
+        status_details={"progress": "Downloading firmware v2.0..."}
+    )
+    jobs_client.publish_update_job_execution(update_progress_req, mqtt.QoS.AT_LEAST_ONCE)
+    print(f"[{CLIENT_ID}] ⏳ Job {job_id} marked as IN_PROGRESS...", flush=True)
+
+    # 2. Simulate Work
+    time.sleep(5)
+
+    # 3. Update Job Status -> SUCCEEDED
+    update_success_req = iotjobs.UpdateJobExecutionRequest(
+        thing_name=CLIENT_ID,
+        job_id=job_id,
+        status=iotjobs.JobStatus.SUCCEEDED,
+        status_details={"firmware_version": "2.0.0", "result": "Success"}
+    )
+    jobs_client.publish_update_job_execution(update_success_req, mqtt.QoS.AT_LEAST_ONCE)
+    print(f"[{CLIENT_ID}] ✅ Job {job_id} marked as SUCCEEDED!", flush=True)
+
+def on_next_job_execution_changed(event):
+    """Callback for REAL-TIME PUSHED jobs (notify-next)."""
+    if event.execution:
+        process_job_execution(event.execution)
+
+def on_start_next_pending_job_execution_accepted(response):
+    """Callback for PULLED QUEUED jobs (start-next/accepted)."""
+    if response.execution:
+        print(f"[{CLIENT_ID}] 📦 FETCHED QUEUED JOB FROM AWS: {response.execution.job_id}", flush=True)
+        process_job_execution(response.execution)
+    else:
+        print(f"[{CLIENT_ID}] ℹ️ No pending queued jobs found on AWS.", flush=True)
+
+def setup_jobs_listener(mqtt_connection):
+    global jobs_client
+    jobs_client = iotjobs.IotJobsClient(mqtt_connection)
+
+    # 1. Subscribe to Real-Time Push Notifications (notify-next)
+    sub_request = iotjobs.NextJobExecutionChangedSubscriptionRequest(thing_name=CLIENT_ID)
+    sub_future, _ = jobs_client.subscribe_to_next_job_execution_changed_events(
+        sub_request,
+        mqtt.QoS.AT_LEAST_ONCE,
+        on_next_job_execution_changed
+    )
+    sub_future.result()
+
+    # 2. Subscribe to Queued Job Responses (start-next/accepted)
+    start_sub_req = iotjobs.StartNextPendingJobExecutionSubscriptionRequest(thing_name=CLIENT_ID)
+    start_sub_future, _ = jobs_client.subscribe_to_start_next_pending_job_execution_accepted(
+        start_sub_req,
+        mqtt.QoS.AT_LEAST_ONCE,
+        on_start_next_pending_job_execution_accepted
+    )
+    start_sub_future.result()
+
+    print(f"[{CLIENT_ID}] ✅ Subscribed to AWS IoT Jobs notifications", flush=True)
+
+    # 3. Ask AWS IoT Core for any existing queued jobs right now
+    start_job_req = iotjobs.StartNextPendingJobExecutionRequest(thing_name=CLIENT_ID)
+    jobs_client.publish_start_next_pending_job_execution(start_job_req, mqtt.QoS.AT_LEAST_ONCE)
+
+##############################
+# Control & Shadow Handlers
+##############################
 # Callback when a control message is received over MQTT
 def on_message_received(topic, payload, dup, qos, retain, **kwargs):
     global PUBLISH_INTERVAL
@@ -84,6 +163,9 @@ def on_shadow_delta_updated(delta_event):
             f"[{CLIENT_ID}] ✅ REPORTED SHADOW STATE SYNCED: {updated_reported}"
         )
 
+#########################################
+# Main Entry
+#########################################
 def main():
     global shadow_client
 
@@ -141,6 +223,9 @@ def main():
     shadow_client.publish_update_shadow(
         init_shadow_request, mqtt.QoS.AT_LEAST_ONCE
     )
+
+    # Setup Jobs Listener
+    setup_jobs_listener(mqtt_connection)
 
     # Telemetry loop
     try:

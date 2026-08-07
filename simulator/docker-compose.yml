@@ -5,8 +5,9 @@ services:
       AWS_IOT_ENDPOINT: "${AWS_IOT_ENDPOINT}"
       CLIENT_ID: "iot-fleet-platform-dev-sim-01"
     volumes:
-      - ./certs:/certs:ro
+      - ./certs:/app/certs:rw
       - ./device_sim.py:/app/device_sim.py:ro
+      - ./fleet_provision.py:/app/fleet_provision.py:ro
 
   sim-02:
     build: .
@@ -14,5 +15,6 @@ services:
       AWS_IOT_ENDPOINT: "${AWS_IOT_ENDPOINT}"
       CLIENT_ID: "iot-fleet-platform-dev-sim-02"
     volumes:
-      - ./certs:/certs:ro
+      - ./certs:/app/certs:rw
       - ./device_sim.py:/app/device_sim.py:ro
+      - ./fleet_provision.py:/app/fleet_provision.py:ro
