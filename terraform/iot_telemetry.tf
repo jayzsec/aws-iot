@@ -63,7 +63,9 @@ resource "aws_iot_policy" "device_policy" {
         Resource = [
           "arn:aws:iot:${var.aws_region}:*:topic/telemetry/${var.project_name}-${var.environment}-sim-*/data",
           "arn:aws:iot:${var.aws_region}:*:topic/$aws/things/${var.project_name}-${var.environment}-sim-*/shadow/*",
-          "arn:aws:iot:${var.aws_region}:*:topic/$aws/things/${var.project_name}-${var.environment}-sim-*/jobs/*"
+          "arn:aws:iot:${var.aws_region}:*:topic/$aws/things/${var.project_name}-${var.environment}-sim-*/jobs/*",
+          "arn:aws:iot:${var.aws_region}:*:topic/$aws/certificates/create/*",
+          "arn:aws:iot:${var.aws_region}:*:topic/$aws/provisioning-templates/${var.project_name}-${var.environment}-fleet-templ/provision/*"
         ]
       },
       {
@@ -73,7 +75,9 @@ resource "aws_iot_policy" "device_policy" {
         Resource = [
           "arn:aws:iot:${var.aws_region}:*:topicfilter/telemetry/${var.project_name}-${var.environment}-sim-*/control",
           "arn:aws:iot:${var.aws_region}:*:topicfilter/$aws/things/${var.project_name}-${var.environment}-sim-*/shadow/*",
-          "arn:aws:iot:${var.aws_region}:*:topicfilter/$aws/things/${var.project_name}-${var.environment}-sim-*/jobs/*"
+          "arn:aws:iot:${var.aws_region}:*:topicfilter/$aws/things/${var.project_name}-${var.environment}-sim-*/jobs/*",
+          "arn:aws:iot:${var.aws_region}:*:topicfilter/$aws/certificates/create/*",
+          "arn:aws:iot:${var.aws_region}:*:topicfilter/$aws/provisioning-templates/${var.project_name}-${var.environment}-fleet-templ/provision/*"
         ]
       },
       {
@@ -83,7 +87,9 @@ resource "aws_iot_policy" "device_policy" {
         Resource = [
           "arn:aws:iot:${var.aws_region}:*:topic/telemetry/${var.project_name}-${var.environment}-sim-*/control",
           "arn:aws:iot:${var.aws_region}:*:topic/$aws/things/${var.project_name}-${var.environment}-sim-*/shadow/*",
-          "arn:aws:iot:${var.aws_region}:*:topic/$aws/things/${var.project_name}-${var.environment}-sim-*/jobs/*"
+          "arn:aws:iot:${var.aws_region}:*:topic/$aws/things/${var.project_name}-${var.environment}-sim-*/jobs/*",
+          "arn:aws:iot:${var.aws_region}:*:topic/$aws/certificates/create/*",
+          "arn:aws:iot:${var.aws_region}:*:topic/$aws/provisioning-templates/${var.project_name}-${var.environment}-fleet-templ/provision/*"
         ]
       }
     ]

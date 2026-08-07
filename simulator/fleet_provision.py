@@ -9,7 +9,7 @@ ENDPOINT = os.getenv("AWS_IOT_ENDPOINT")
 CLAIM_CERT = os.getenv("CLAIM_CERT_PATH", "/app/certs/claim_certificate.pem")
 CLAIM_KEY = os.getenv("CLAIM_KEY_PATH", "/app/certs/claim_private.key")
 ROOT_CA = os.getenv("ROOT_CA_PATH", "/app/certs/root-CA.crt")
-TEMPLATE_NAME = "iot-fleet-platform-dev-fleet-template"
+TEMPLATE_NAME = "iot-fleet-platform-dev-fleet-templ"
 
 TIMESTAMP = int(time.time())
 SERIAL_NUMBER = f"auto-{TIMESTAMP}"
